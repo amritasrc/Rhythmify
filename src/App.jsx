@@ -1,12 +1,249 @@
-import React from 'react'
-import {ApiFetch} from './comps/ApiFetch'
+import { useState, useRef, useEffect } from "react";
+import YouTube from "react-youtube";
+import demoThumbnail from "./assets/rhythmify-thumbnail.png";
+import { IoSearch } from "react-icons/io5";
+import { FaPause } from "react-icons/fa6";
+import { FaPlay } from "react-icons/fa6";
 
-const App = () => {
+const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
+
+export default function App() {
+  const [query, setQuery] = useState("");
+  const [ytData, setYtData] = useState(null);
+  const [selectedVideo, setSelectedVideo] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+
+  const playerRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const searchVideos = async () => {
+    if (!query.trim()) return;
+
+    try {
+      setLoading(true);
+
+      const response = await fetch(
+        `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&q=${encodeURIComponent(
+          query,
+        )}&maxResults=10&key=${API_KEY}`,
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch videos");
+      }
+
+      const data = await response.json();
+
+      setYtData(data);
+      console.log(data);
+      setQuery("");
+
+      if (data.items.length > 0) {
+        setSelectedVideo(data.items[0]);
+      }
+      inputRef.current?.blur();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePlayerReady = (event) => {
+    playerRef.current = event.target;
+
+    setTimeout(() => {
+      setDuration(playerRef.current.getDuration());
+      playerRef.current.playVideo();
+      setIsPlaying(true);
+    }, 500);
+  };
+
+  const togglePlayPause = () => {
+    if (!playerRef.current) return;
+
+    const state = playerRef.current.getPlayerState();
+
+    if (state === 1) {
+      playerRef.current.pauseVideo();
+      setIsPlaying(false);
+    } else {
+      playerRef.current.playVideo();
+      setIsPlaying(true);
+    }
+  };
+
+  const seekVideo = (value) => {
+    if (!playerRef.current) return;
+
+    playerRef.current.seekTo(value, true);
+    setCurrentTime(value);
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (playerRef.current) {
+        setCurrentTime(playerRef.current.getCurrentTime());
+        setDuration(playerRef.current.getDuration());
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === "/") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      const target = e.target;
+
+      if (
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.code === "Space") {
+        e.preventDefault();
+        togglePlayPause();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+
+    return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  };
+
   return (
-    <div>
-      <ApiFetch/>
-    </div>
-  )
-}
+    <div className="min-h-screen w-full flex flex-col items-center gap-6 px-6 py-20">
+      <h1 className="text-3xl font-bold">Rhythmify 🎵</h1>
 
-export default App
+      {!selectedVideo ? (
+        <div className="flex flex-col items-start">
+          <img src={demoThumbnail} alt="Rhythmify" className="h-80 rounded-2xl object-cover" />
+
+          <p className="mt-4">Search for a song to start listening.</p>
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-4 w-full max-w-xl">
+          <img
+            src={selectedVideo.snippet.thumbnails.high.url}
+            alt={selectedVideo.snippet.title}
+            className="w-full h-80 object-cover rounded-2xl border border-zinc-700"
+          />
+
+          <h2 className="text-center">{selectedVideo.snippet.title}</h2>
+
+          <YouTube
+            videoId={selectedVideo.id.videoId}
+            onReady={handlePlayerReady}
+            opts={{
+              width: "0",
+              height: "0",
+              playerVars: {
+                autoplay: 1,
+              },
+            }}
+          />
+
+          <div className="w-full flex gap-2 items-center">
+            <p>{formatTime(currentTime)}</p>
+            <input
+              type="range"
+              min={0}
+              max={duration}
+              value={currentTime}
+              onChange={(e) => seekVideo(Number(e.target.value))}
+              className="w-full"
+            />
+            <p>{formatTime(duration)}</p>
+          </div>
+
+          <div className="flex gap-4 text-sm">
+            <button
+              onClick={togglePlayPause}
+              className="px-4 py-2 rounded-lg border"
+            >
+              {isPlaying ? <FaPause /> : <FaPlay />}
+            </button>
+          </div>
+        </div>
+      )}
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          searchVideos();
+        }}
+        className="border border-zinc-600 px-3 py-2 rounded-lg flex items-center gap-2"
+      >
+        <input
+          type="text"
+          ref={inputRef}
+          placeholder="Press / to focus"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="outline-none w-72"
+        />
+
+        <button type="submit">
+          <IoSearch />
+        </button>
+      </form>
+
+      {loading && <p>Loading...</p>}
+
+      {ytData && ytData.items.length > 0 && (
+        <div className="w-full max-w-xl flex flex-col gap-2">
+          <h3 className="font-semibold">Search Results</h3>
+
+          {ytData.items.map((video) => (
+            <button
+              key={video.id.videoId}
+              onClick={() => setSelectedVideo(video)}
+              className="flex items-center gap-3 p-2 rounded-lg border border-zinc-700 text-left hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            >
+              <img
+                src={video.snippet.thumbnails.high.url}
+                alt={video.snippet.title}
+                className="w-20 rounded-lg"
+              />
+
+              <span className="text-zinc-400 hover:text-zinc-200">
+                {video.snippet.title}
+              </span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
