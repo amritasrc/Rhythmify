@@ -1,16 +1,34 @@
-# React + Vite
+# Rhythmify 🎵
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Rhythmify is a lightweight music player built with React that allows users to search and play YouTube songs through a clean custom interface.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Search songs using the YouTube Data API
+- Auto-play first search result
+- Display song thumbnail and title
+- Custom play/pause controls
+- Interactive seek bar
+- Live playback progress tracking
+- Keyboard shortcuts
+  - `/` → Focus search box
+  - `Space` → Play/Pause
+- Responsive UI with Tailwind CSS
 
-## React Compiler
+## Tech Stack
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- React
+- Vite
+- YouTube Data API v3
+- react-youtube
+- Tailwind CSS
+- React Icons
 
-## Expanding the ESLint configuration
+## How It Works
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. User searches for a song.
+2. App fetches matching videos from YouTube.
+3. First result is selected automatically.
+4. Hidden YouTube player handles audio playback.
+5. Custom controls interact with the YouTube IFrame API.
+6. Playback progress updates every second.
